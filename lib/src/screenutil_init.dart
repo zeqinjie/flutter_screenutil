@@ -79,6 +79,8 @@ class ScreenUtilInit extends StatefulWidget {
     this.responsiveWidgets,
     this.excludeWidgets,
     this.fontSizeResolver = FontSizeResolvers.width,
+    this.largeScreenFitMultiple = 1.0,
+    this.largeScreenShortestSideBreakpoint = 600.0,
   }) : super(key: key);
 
   final ScreenUtilInitBuilder? builder;
@@ -96,6 +98,12 @@ class ScreenUtilInit extends StatefulWidget {
   final Size designSize;
   final Iterable<String>? responsiveWidgets;
   final Iterable<String>? excludeWidgets;
+
+  /// 大屏（平板 / 折叠展开）宽度缩放后再乘的系数，同 SwiftyFitsize `iPadFitMultiple`，`(0, 1]`，默认 `1.0`。
+  final double largeScreenFitMultiple;
+
+  /// 最短边 ≥ 此值（dp）时视为大屏并应用 [largeScreenFitMultiple]。
+  final double largeScreenShortestSideBreakpoint;
 
   @override
   State<ScreenUtilInit> createState() => _ScreenUtilInitState();
@@ -187,6 +195,8 @@ class _ScreenUtilInitState extends State<ScreenUtilInit> with WidgetsBindingObse
         splitScreenMode: widget.splitScreenMode,
         minTextAdapt: widget.minTextAdapt,
         fontSizeResolver: widget.fontSizeResolver,
+        largeScreenFitMultiple: widget.largeScreenFitMultiple,
+        largeScreenShortestSideBreakpoint: widget.largeScreenShortestSideBreakpoint,
       );
 
       return widget.builder?.call(context, widget.child) ?? widget.child!;
@@ -201,6 +211,8 @@ class _ScreenUtilInitState extends State<ScreenUtilInit> with WidgetsBindingObse
           splitScreenMode: widget.splitScreenMode,
           minTextAdapt: widget.minTextAdapt,
           fontSizeResolver: widget.fontSizeResolver,
+          largeScreenFitMultiple: widget.largeScreenFitMultiple,
+          largeScreenShortestSideBreakpoint: widget.largeScreenShortestSideBreakpoint,
         );
 
         if (snapshot.connectionState == ConnectionState.done) {

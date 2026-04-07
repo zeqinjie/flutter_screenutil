@@ -32,6 +32,13 @@ class ScreenUtil {
   late bool _splitScreenMode;
   FontSizeResolver? fontSizeResolver;
 
+  /// 大屏（平板 / 折叠展开等）在按设计宽度比例缩放后，再乘以该系数，思路同 [SwiftyFitsize](https://github.com/LinXunFeng/SwiftyFitsize) 的 `iPadFitMultiple`，避免宽屏上控件与字体过大。
+  /// 有效范围 `(0, 1]`，非法值按 `1.0` 处理；默认 `1.0` 不改变现有行为。
+  double _largeScreenFitMultiple = 1.0;
+
+  /// 当 `min(宽, 高) >=` 该值（逻辑像素）时视为大屏并应用 [_largeScreenFitMultiple]。默认 `600` 与常见平板断点一致。
+  double _largeScreenShortestSideBreakpoint = 600.0;
+
   ScreenUtil._();
 
   factory ScreenUtil() => _instance;
@@ -114,6 +121,8 @@ class ScreenUtil {
     bool? splitScreenMode,
     bool? minTextAdapt,
     FontSizeResolver? fontSizeResolver,
+    double? largeScreenFitMultiple,
+    double? largeScreenShortestSideBreakpoint,
   }) {
     try {
       if (data != null)
@@ -142,7 +151,12 @@ class ScreenUtil {
       ..fontSizeResolver = fontSizeResolver ?? _instance.fontSizeResolver
       .._minTextAdapt = minTextAdapt ?? _instance._minTextAdapt
       .._splitScreenMode = splitScreenMode ?? _instance._splitScreenMode
-      .._orientation = orientation;
+      .._orientation = orientation
+      .._largeScreenFitMultiple =
+          largeScreenFitMultiple ?? _instance._largeScreenFitMultiple
+      .._largeScreenShortestSideBreakpoint =
+          largeScreenShortestSideBreakpoint ??
+              _instance._largeScreenShortestSideBreakpoint;
 
     _instance._elementsToRebuild?.forEach((el) => el.markNeedsBuild());
   }
@@ -154,6 +168,8 @@ class ScreenUtil {
     bool splitScreenMode = false,
     bool minTextAdapt = false,
     FontSizeResolver? fontSizeResolver,
+    double largeScreenFitMultiple = 1.0,
+    double largeScreenShortestSideBreakpoint = 600.0,
   }) {
     final view = View.maybeOf(context);
     return configure(
@@ -162,6 +178,8 @@ class ScreenUtil {
       splitScreenMode: splitScreenMode,
       minTextAdapt: minTextAdapt,
       fontSizeResolver: fontSizeResolver,
+      largeScreenFitMultiple: largeScreenFitMultiple,
+      largeScreenShortestSideBreakpoint: largeScreenShortestSideBreakpoint,
     );
   }
 
@@ -171,6 +189,8 @@ class ScreenUtil {
     bool splitScreenMode = false,
     bool minTextAdapt = false,
     FontSizeResolver? fontSizeResolver,
+    double largeScreenFitMultiple = 1.0,
+    double largeScreenShortestSideBreakpoint = 600.0,
   }) {
     return ScreenUtil.ensureScreenSize().then((_) {
       return init(
@@ -179,6 +199,8 @@ class ScreenUtil {
         minTextAdapt: minTextAdapt,
         splitScreenMode: splitScreenMode,
         fontSizeResolver: fontSizeResolver,
+        largeScreenFitMultiple: largeScreenFitMultiple,
+        largeScreenShortestSideBreakpoint: largeScreenShortestSideBreakpoint,
       );
     });
   }
@@ -211,14 +233,43 @@ class ScreenUtil {
   /// The offset from the bottom, in dp
   double get bottomBarHeight => _data.padding.bottom;
 
-  /// 实际尺寸与UI设计的比例
-  /// The ratio of actual width to UI design
-  double get scaleWidth => !_enableScaleWH() ? 1 : screenWidth / _uiSize.width;
+  /// 是否按大屏处理（最短边 ≥ [_largeScreenShortestSideBreakpoint]），用于折叠展开、平板等与 [SwiftyFitsize](https://github.com/LinXunFeng/SwiftyFitsize) `iPadFitMultiple` 同类场景。
+  bool get isLargeScreen {
+    final Size s = _data.size;
+    return min(s.width, s.height) >= _largeScreenShortestSideBreakpoint;
+  }
 
-  /// The ratio of actual height to UI design
-  double get scaleHeight =>
-      !_enableScaleWH() ? 1 : (_splitScreenMode ? max(screenHeight, 700) : screenHeight) /
-      _uiSize.height;
+  /// 大屏时对宽度比例的额外乘子；非大屏或系数非法时为 `1.0`。
+  double get largeScreenWidthFactor {
+    if (!isLargeScreen) return 1.0;
+    final double m = _largeScreenFitMultiple;
+    if (m <= 0 || m > 1) return 1.0;
+    return m;
+  }
+
+  /// 未乘大屏系数的宽度比例（对应 Swifty 中 `≈` / 强制宽度时的基准）。
+  double get rawScaleWidth =>
+      !_enableScaleWH() ? 1 : screenWidth / _uiSize.width;
+
+  /// 未乘大屏系数的高度比例。
+  double get rawScaleHeight =>
+      !_enableScaleWH()
+          ? 1
+          : (_splitScreenMode ? max(screenHeight, 700) : screenHeight) /
+              _uiSize.height;
+
+  /// 实际尺寸与UI设计的比例（大屏时乘 [largeScreenWidthFactor]，同 `~` 思路）
+  /// The ratio of actual width to UI design
+  double get scaleWidth =>
+      !_enableScaleWH() ? 1 : rawScaleWidth * largeScreenWidthFactor;
+
+  /// The ratio of actual height to UI design（高度不按大屏系数缩小，与 Swifty 高度运算符独立一致）
+  double get scaleHeight => rawScaleHeight;
+
+  /// 用于 [setSpForce]，不乘大屏宽度系数。
+  double get rawScaleText => !_enableScaleText()
+      ? 1
+      : (_minTextAdapt ? min(rawScaleWidth, rawScaleHeight) : rawScaleWidth);
 
   double get scaleText =>
       !_enableScaleText() ? 1 : (_minTextAdapt ? min(scaleWidth, scaleHeight) : scaleWidth);
@@ -229,6 +280,9 @@ class ScreenUtil {
   /// Height can also be adapted according to this to ensure no deformation ,
   /// if you want a square
   double setWidth(num width) => width * scaleWidth;
+
+  /// 按设计宽度比例缩放，但不乘大屏系数（类似 Swifty `≈` 强制宽度）。
+  double setWidthForce(num width) => width * rawScaleWidth;
 
   /// 根据UI设计的设备高度适配
   /// 当发现UI设计中的一屏显示的与当前样式效果不符合时,
@@ -256,6 +310,10 @@ class ScreenUtil {
   ///- [fontSize] The size of the font on the UI design, in dp.
   double setSp(num fontSize) =>
       fontSizeResolver?.call(fontSize, _instance) ?? fontSize * scaleText;
+
+  /// 字体缩放不乘大屏宽度系数（无 [fontSizeResolver] 时使用 [rawScaleText]）。
+  double setSpForce(num fontSize) =>
+      fontSizeResolver?.call(fontSize, _instance) ?? fontSize * rawScaleText;
 
   DeviceType deviceType(BuildContext context) {
     var deviceType = DeviceType.web;

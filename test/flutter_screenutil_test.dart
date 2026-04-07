@@ -41,6 +41,39 @@ void main() {
       expect(1.h, biggerDeviceSize.height / uiSize.height);
       expect(1.h > 1, true);
     });
+
+    test('大屏乘 largeScreenFitMultiple（Swifty iPadFitMultiple 思路）', () {
+      const tabletSize = Size(800, 1200);
+      const tabletData = MediaQueryData(size: tabletSize);
+      ScreenUtil.configure(
+        data: tabletData,
+        designSize: uiSize,
+        minTextAdapt: false,
+        splitScreenMode: false,
+        largeScreenFitMultiple: 0.55,
+        largeScreenShortestSideBreakpoint: 600,
+      );
+
+      final double raw = tabletSize.width / uiSize.width;
+      expect(ScreenUtil().isLargeScreen, true);
+      expect(100.w, closeTo(100 * raw * 0.55, 0.001));
+      expect(100.fw, closeTo(100 * raw, 0.001));
+    });
+
+    test('手机尺寸不乘 largeScreenFitMultiple', () {
+      ScreenUtil.configure(
+        data: smallerDeviceData,
+        designSize: uiSize,
+        minTextAdapt: false,
+        splitScreenMode: false,
+        largeScreenFitMultiple: 0.55,
+        largeScreenShortestSideBreakpoint: 600,
+      );
+
+      expect(ScreenUtil().isLargeScreen, false);
+      final double raw = smallerDeviceSize.width / uiSize.width;
+      expect(100.w, closeTo(100 * raw, 0.001));
+    });
   });
 
   group('[Test overflow]', () {
