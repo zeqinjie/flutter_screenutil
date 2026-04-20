@@ -10,7 +10,7 @@ import 'dart:ui' as ui show FlutterView;
 
 import 'package:flutter/widgets.dart';
 
-typedef FontSizeResolver = double Function(num fontSize, ScreenUtil instance);
+typedef FontSizeResolver = double Function(num fontSize, ScreenUtil instance, bool isForce);
 
 class ScreenUtil {
   static const Size defaultSize = Size(360, 690);
@@ -263,8 +263,9 @@ class ScreenUtil {
   double get scaleWidth =>
       !_enableScaleWH() ? 1 : rawScaleWidth * largeScreenWidthFactor;
 
-  /// The ratio of actual height to UI design（高度不按大屏系数缩小，与 Swifty 高度运算符独立一致）
-  double get scaleHeight => rawScaleHeight;
+  /// 实际尺寸与UI设计的比例（大屏时乘 [largeScreenWidthFactor]，同 `~` 思路）
+  /// The ratio of actual height to UI design
+  double get scaleHeight => rawScaleHeight * largeScreenWidthFactor;
 
   /// 用于 [setSpForce]，不乘大屏宽度系数。
   double get rawScaleText => !_enableScaleText()
@@ -294,26 +295,38 @@ class ScreenUtil {
   /// does not match the current style effect, or if there is a difference in shape.
   double setHeight(num height) => height * scaleHeight;
 
+  /// 按设计高度比例缩放，基准为 [rawScaleHeight]（与 [setWidthForce] 对称；当前 [scaleHeight] 与之一致，大屏高度不乘 [largeScreenWidthFactor]）。
+  double setHeightForce(num height) => height * rawScaleHeight;
+
   ///根据宽度或高度中的较小值进行适配
   ///Adapt according to the smaller of width or height
   double radius(num r) => r * min(scaleWidth, scaleHeight);
 
+  /// [radius] 的「强制」版：宽高比例均用 [rawScaleWidth] / [rawScaleHeight]，不乘大屏宽度系数。
+  double radiusForce(num r) => r * min(rawScaleWidth, rawScaleHeight);
+
   /// Adapt according to the both width and height
   double diagonal(num d) => d * scaleHeight * scaleWidth;
 
+  /// [diagonal] 的「强制」版：乘积为 [rawScaleWidth] * [rawScaleHeight]。
+  double diagonalForce(num d) => d * rawScaleHeight * rawScaleWidth;
+
   /// Adapt according to the maximum value of scale width and scale height
   double diameter(num d) => d * max(scaleWidth, scaleHeight);
+
+  /// [diameter] 的「强制」版：取 [rawScaleWidth] 与 [rawScaleHeight] 的较大值。
+  double diameterForce(num d) => d * max(rawScaleWidth, rawScaleHeight);
 
   ///字体大小适配方法
   ///- [fontSize] UI设计上字体的大小,单位dp.
   ///Font size adaptation method
   ///- [fontSize] The size of the font on the UI design, in dp.
   double setSp(num fontSize) =>
-      fontSizeResolver?.call(fontSize, _instance) ?? fontSize * scaleText;
+      fontSizeResolver?.call(fontSize, _instance, false) ?? fontSize * scaleText;
 
   /// 字体缩放不乘大屏宽度系数（无 [fontSizeResolver] 时使用 [rawScaleText]）。
   double setSpForce(num fontSize) =>
-      fontSizeResolver?.call(fontSize, _instance) ?? fontSize * rawScaleText;
+      fontSizeResolver?.call(fontSize, _instance, true) ?? fontSize * rawScaleText;
 
   DeviceType deviceType(BuildContext context) {
     var deviceType = DeviceType.web;

@@ -41,8 +41,9 @@ abstract class RebuildFactors {
 }
 
 abstract class FontSizeResolvers {
-  static double width(num fontSize, ScreenUtil instance) {
-    return instance.setWidth(fontSize);
+  /// [isForce] 是否不按大屏系数缩放宽度, 与 Swifty 宽度运算符独立一致, false 按大屏系数缩放, true 不按大屏系数缩放
+  static double width(num fontSize, ScreenUtil instance, bool isForce) {
+    return isForce ? instance.setWidthForce(fontSize) : instance.setWidth(fontSize);
   }
 
   static double height(num fontSize, ScreenUtil instance) {

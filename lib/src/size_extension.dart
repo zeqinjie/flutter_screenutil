@@ -14,20 +14,32 @@ extension SizeExtension on num {
   ///[ScreenUtil.setHeight]
   double get h => ScreenUtil().setHeight(this);
 
+  ///[ScreenUtil.setHeightForce]（高度基准为 [rawScaleHeight]，与 [fw] 对称；当前与 [h] 数值一致）
+  double get fh => ScreenUtil().setHeightForce(this);
+
   ///[ScreenUtil.radius]
   double get r => ScreenUtil().radius(this);
+
+  ///[ScreenUtil.radiusForce]（[min] 内用 raw 宽高比例，不乘大屏宽度系数）
+  double get fr => ScreenUtil().radiusForce(this);
 
   ///[ScreenUtil.diagonal]
   double get dg => ScreenUtil().diagonal(this);
 
+  ///[ScreenUtil.diagonalForce]（[rawScaleWidth]×[rawScaleHeight]）
+  double get fdg => ScreenUtil().diagonalForce(this);
+
   ///[ScreenUtil.diameter]
   double get dm => ScreenUtil().diameter(this);
+
+  ///[ScreenUtil.diameterForce]（[max] 内用 raw 宽高比例）
+  double get fdm => ScreenUtil().diameterForce(this);
 
   ///[ScreenUtil.setSp]
   double get sp => ScreenUtil().setSp(this);
 
   ///[ScreenUtil.setSpForce]（字体不乘大屏宽度系数）
-  double get spf => ScreenUtil().setSpForce(this);
+  double get fsp => ScreenUtil().setSpForce(this);
 
   ///smart size :  it check your value - if it is bigger than your value it will set your value
   ///for example, you have set 16.sm() , if for your screen 16.sp() is bigger than 16 , then it will set 16 not 16.sp()
